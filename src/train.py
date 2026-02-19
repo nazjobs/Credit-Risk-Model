@@ -1,3 +1,5 @@
+import os
+import joblib
 import pandas as pd
 import mlflow
 import mlflow.sklearn
@@ -5,70 +7,59 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
-import joblib
-import os
+from src.config import config
 
-# Set MLflow tracking URI to a local directory
-mlflow.set_tracking_uri("file://" + os.path.abspath("mlruns"))
+mlflow.set_tracking_uri(config.mlflow_tracking_uri)
 
+def load_processed_data() -> tuple:
+    df = pd.read_csv(config.processed_data_path)
+    X = df.drop(, axis=1)
+    y = df
+    return X, y
 
-def train():
-    data_path = "data/processed/train_labeled.csv"
-    if not os.path.exists(data_path):
-        print("Processed data not found. Run data_processing.py first.")
+def train_models() -> None:
+    if not os.path.exists(config.processed_data_path):
+        print("Processed data not found.")
         return
 
-    df = pd.read_csv(data_path)
-
-    # Split Features and Target
-    X = df.drop(["risk_label"], axis=1)
-    y = df["risk_label"]
-
+    X, y = load_processed_data()
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
+        X, y, test_size=0.2, random_state=config.random_state
     )
 
     mlflow.set_experiment("Credit_Risk_Model")
 
-    # --- Model 1: Random Forest ---
     with mlflow.start_run(run_name="Random_Forest"):
-        n_estimators = 50
-        max_depth = 10
-
-        print("Training Random Forest...")
         rf = RandomForestClassifier(
-            n_estimators=n_estimators, max_depth=max_depth, random_state=42
+            n_estimators=config.rf_n_estimators, 
+            max_depth=config.rf_max_depth, 
+            random_state=config.random_state
         )
         rf.fit(X_train, y_train)
 
         y_pred = rf.predict(X_test)
+        y_prob = rf.predict_proba(X_test)
+        
         acc = accuracy_score(y_test, y_pred)
         f1 = f1_score(y_test, y_pred)
+        roc_auc = roc_auc_score(y_test, y_prob)
 
-        print(f"Random Forest Accuracy: {acc:.4f}")
+        print(f"RF - Accuracy: {acc:.4f}, ROC AUC: {roc_auc:.4f}")
 
-        mlflow.log_param("n_estimators", n_estimators)
-        mlflow.log_param("max_depth", max_depth)
-        mlflow.log_metric("accuracy", acc)
-        mlflow.log_metric("f1_score", f1)
+        mlflow.log_params({"n_estimators": config.rf_n_estimators, "max_depth": config.rf_max_depth})
+        mlflow.log_metrics({"accuracy": acc, "f1_score": f1, "roc_auc": roc_auc})
         mlflow.sklearn.log_model(rf, "model")
 
-        # Save model locally for API
-        os.makedirs("src/api", exist_ok=True)
-        joblib.dump(rf, "src/api/model.pkl")
+        os.makedirs(os.path.dirname(config.model_save_path), exist_ok=True)
+        joblib.dump(rf, config.model_save_path)
 
-    # --- Model 2: Logistic Regression ---
     with mlflow.start_run(run_name="Logistic_Regression"):
-        print("Training Logistic Regression...")
-        lr = LogisticRegression(max_iter=1000)
+        lr = LogisticRegression(max_iter=config.lr_max_iter)
         lr.fit(X_train, y_train)
-
         y_pred = lr.predict(X_test)
         acc = accuracy_score(y_test, y_pred)
-
-        print(f"Logistic Regression Accuracy: {acc:.4f}")
+        print(f"LR - Accuracy: {acc:.4f}")
         mlflow.log_metric("accuracy", acc)
 
-
 if __name__ == "__main__":
-    train()
+    train_models()
