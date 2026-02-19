@@ -26,12 +26,12 @@ def create_rfm_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def create_proxy_target(df: pd.DataFrame, rfm: pd.DataFrame) -> pd.DataFrame:
     scaler = StandardScaler()
-    rfm_scaled = scaler.fit_transform(rfm[])
+    rfm_scaled = scaler.fit_transform(rfm])
 
     kmeans = KMeans(n_clusters=config.n_clusters, random_state=config.random_state, n_init=10)
     rfm = kmeans.fit_predict(rfm_scaled)
 
-    cluster_summary = rfm.groupby("Cluster")[].mean()
+    cluster_summary = rfm.groupby("Cluster")].mean()
     bad_cluster = cluster_summary.idxmax()
 
     rfm = rfm.apply(lambda x: 1 if x == bad_cluster else 0)
@@ -39,14 +39,13 @@ def create_proxy_target(df: pd.DataFrame, rfm: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
+    df = pd.to_datetime(df)
     df = df.dt.hour
     df = df.dt.day
     df = df.dt.month
 
     le = LabelEncoder()
-    cat_columns = config.cat_cols if config.cat_cols else
-    
-    for col in cat_columns:
+    for col in config.cat_cols:
         if col in df.columns:
             df = le.fit_transform(df.astype(str))
 
@@ -64,7 +63,6 @@ def main() -> None:
     df = create_proxy_target(df, rfm)
     df = feature_engineering(df)
 
-    drop_cols = config.cols_to_drop if config.cols_to_drop else
     df = df.drop(columns=, errors="ignore")
     df = df.fillna(0)
     df.to_csv(config.processed_data_path, index=False)
