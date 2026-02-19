@@ -12,3 +12,5 @@ pytest
 flake8
 joblib
 requests
+streamlit
+shap
