@@ -38,7 +38,7 @@ def train_models() -> None:
         rf.fit(X_train, y_train)
 
         y_pred = rf.predict(X_test)
-        y_prob = rf.predict_proba(X_test)
+        y_prob = rf.predict_proba(X_test) # FIXED: ROC AUC needs 1D array
         
         acc = accuracy_score(y_test, y_pred)
         f1 = f1_score(y_test, y_pred)
